@@ -38,56 +38,59 @@ pip install -r requirements.txt
 
 ## Structure du Projet
 
+```plaintext
 sgbd_simulator/
 │
 ├── src/
-│   ├── __init__.py
-│   ├── main.py              # Point d'entrée de l'application
+│   ├── __init__.py              # Fichier d'initialisation du package src
+│   ├── main.py                  # Point d'entrée de l'application
 │   │
 │   ├── gui/
-│   │   ├── __init__.py 
-│   │   ├── main_window.py   # Fenêtre principale
-│   │   └── widgets/         # Composants d'interface
+│   │   ├── __init__.py          # Fichier d'initialisation du package gui
+│   │   ├── main_window.py       # Fenêtre principale de l'application
+│   │   └── widgets/             # Répertoire pour les composants d'interface personnalisés
 │   │
 │   ├── modules/
-│   │   ├── database_connector.py    # Module de connexion BD
-│   │   ├── schema_manager.py        # Gestion des schémas
-│   │   ├── crud_operator.py         # Opérations CRUD
+│   │   ├── database_connector.py    # Module de connexion à la base de données
+│   │   ├── schema_manager.py        # Gestion des schémas (tables)
+│   │   ├── crud_operator.py         # Opérations CRUD sur les données
 │   │   ├── data_viewer.py           # Visualisation des données
-│   │   ├── query_executor.py        # Exécution des requêtes
-│   │   └── ui_coordinator.py        # Coordination UI
+│   │   ├── query_executor.py        # Exécution des requêtes SQL
+│   │   └── ui_coordinator.py        # Coordination de l'interface utilisateur
 │   │
 │   └── utils/
-│       ├── constants.py     # Constantes globales
+│       ├── constants.py         # Constantes globales du projet
 │
-├── tests/                   # Tests unitaires
-├── requirements.txt         # Dépendances du projet
-└── README.md               # Documentation
+├── tests/                       # Répertoire pour les tests unitaires
+├── requirements.txt             # Fichier listant les dépendances du projet
+└── README.md                   # Documentation principale du projet
 
 ## Répartition des Tâches par Équipe
 
 ### Équipe Core
 
 #### EBAKISSE: Optimisation de la Connexion BD
+
 - Implémentation de database_connector.py
 - Gestion du pool de connexions
 - Administration des sessions BD
 - Sécurisation des accès à la base
 
 Pour push vos modifications:
-
+```python
 git add src/modules/database_connector.py
 git commit -m "Description des modifications"
 git push origin main
 
 #### FOMEKOUO: Coordination Interface Utilisateur
+
 - Développement de ui_coordinator.py
 - Conception de la mise en page principale
 - Gestion des interactions entre widgets
 - Design de l'expérience utilisateur
 
 Pour push vos modifications:
-
+```python
 git add src/modules/ui_coordinator.py
 git commit -m "Description des modifications"
 git push origin main
@@ -95,55 +98,56 @@ git push origin main
 ### Équipe Fonctionnalités
 
 #### EFONTSE: Gestion des Schémas
+
 - Implémentation de schema_manager.py
 - Création et modification des tables
 - Administration de la structure BD
 - Validation des schémas
 
 Pour push vos modifications:
-
+```python
 git add src/modules/schema_manager.py
 git commit -m "Description des modifications"
 git push origin main
 
 #### NJEMI: Opérations CRUD
+
 - Développement de crud_operator.py
 - Fonctionnalités de manipulation des données
 - Gestion des enregistrements
 - Validation des données
 
 Pour push vos modifications:
-
+```python
 git add src/modules/crud_operator.py
 git commit -m "Description des modifications"
 git push origin main
 
 #### MEZATIO: Visualisation des Données
+
 - Création de data_viewer.py
 - Affichage des résultats
 - Design des layouts de présentation
 - Export des données
 
 Pour push vos modifications:
-
+```python
 git add src/modules/data_viewer.py
 git commit -m "Description des modifications"
 git push origin main
 
-
 #### TENKWA: Exécution des Requêtes
+
 - Construction de query_executor.py
 - Traitement des requêtes SQL
 - Gestion des résultats et erreurs
 - Optimisation des requêtes
 
 Pour push vos modifications:
+```python
 git add src/modules/query_executor.py
 git commit -m "Description des modifications"
-git push origin main
-
-
-## Prérequis Techniques
+git push origin main## Prérequis Techniques
 
 ### Environnement de Développement
 - Python 3.x
