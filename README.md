@@ -64,7 +64,7 @@ sgbd_simulator/
 ├── tests/                       # Répertoire pour les tests unitaires
 ├── requirements.txt             # Fichier listant les dépendances du projet
 └── README.md                   # Documentation principale du projet
-
+```
 ## Répartition des Tâches par Équipe
 
 ### Équipe Core
@@ -81,7 +81,7 @@ Pour push vos modifications:
 git add src/modules/database_connector.py
 git commit -m "Description des modifications"
 git push origin main
-
+```
 #### FOMEKOUO: Coordination Interface Utilisateur
 
 - Développement de ui_coordinator.py
@@ -94,7 +94,7 @@ Pour push vos modifications:
 git add src/modules/ui_coordinator.py
 git commit -m "Description des modifications"
 git push origin main
-
+```
 ### Équipe Fonctionnalités
 
 #### EFONTSE: Gestion des Schémas
@@ -109,7 +109,7 @@ Pour push vos modifications:
 git add src/modules/schema_manager.py
 git commit -m "Description des modifications"
 git push origin main
-
+```
 #### NJEMI: Opérations CRUD
 
 - Développement de crud_operator.py
@@ -122,7 +122,7 @@ Pour push vos modifications:
 git add src/modules/crud_operator.py
 git commit -m "Description des modifications"
 git push origin main
-
+```
 #### MEZATIO: Visualisation des Données
 
 - Création de data_viewer.py
@@ -135,7 +135,7 @@ Pour push vos modifications:
 git add src/modules/data_viewer.py
 git commit -m "Description des modifications"
 git push origin main
-
+```
 #### TENKWA: Exécution des Requêtes
 
 - Construction de query_executor.py
@@ -148,7 +148,7 @@ Pour push vos modifications:
 git add src/modules/query_executor.py
 git commit -m "Description des modifications"
 git push origin main## Prérequis Techniques
-
+```
 ### Environnement de Développement
 - Python 3.x
 - IDE recommandé: VS Code ou PyCharm
