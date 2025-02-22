@@ -1,0 +1,8 @@
+PyQt5
+SQLite3
+pytest
+python-dotenv
+black
+flake8
+pytest-cov
+pytest-qt
