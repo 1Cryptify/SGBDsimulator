@@ -13,12 +13,28 @@ Pour créer une clé SSH et cloner le dépôt :
 ssh-keygen -t ed25519 -C "votre@email.com"
 
 2. Démarrer l'agent SSH :
+windows :
+-cmd
+start ssh-agent
+ssh-add %USERPROFILE%\.ssh\id_ed25519
 
+-powershell
+Start-Service ssh-agent
+ssh-add $env:USERPROFILE\.ssh\id_ed25519
+
+
+linux
 eval "$(ssh-agent -s)"
 ssh-add ~/.ssh/id_ed25519
 
 3. Copier la clé publique :
+windows:
+-cmd
+type %USERPROFILE%\.ssh\id_ed25519.pub
+-powershell
+Get-Content $env:USERPROFILE\.ssh\id_ed25519.pub
 
+linux:
 cat ~/.ssh/id_ed25519.pub
 
 4. Ajouter la clé dans GitHub :
