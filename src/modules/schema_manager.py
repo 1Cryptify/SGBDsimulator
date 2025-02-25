@@ -1,8 +1,8 @@
 import sqlite3
-from modules.database_connector import DatabaseConnector
+from .database_connector import DatabaseConnector
 
 class SchemaManager:
-    def __init__(self, db_path="database.sqlite"):
+    def __init__(self, db_path):
         """Initialisation avec connexion à la base de données"""
         self.connector = DatabaseConnector(db_path)
         self.connection = self.connector.get_connection()
@@ -14,12 +14,15 @@ class SchemaManager:
         columns : dict {nom_colonne: type_colonne}
         constraints : list de contraintes SQL (ex: ["PRIMARY KEY(id)", "FOREIGN KEY(user_id) REFERENCES users(id)"])
         """
-        columns_def = ", ".join([f"{col} {dtype}" for col, dtype in columns.items()])
-        if constraints:
-            columns_def += ", " + ", ".join(constraints)
-        query = f"CREATE TABLE IF NOT EXISTS {table_name} ({columns_def})"
-        self.cursor.execute(query)
-        self.connection.commit()
+        try:
+            columns_def = ", ".join([f"{col} {dtype}" for col, dtype in columns.items()])
+            if constraints:
+                columns_def += ", " + ", ".join(constraints)
+            query = f"CREATE TABLE IF NOT EXISTS {table_name} ({columns_def})"
+            self.cursor.execute(query)
+            self.connection.commit()
+        except sqlite3.Error as e:
+            print(f"Erreur lors de la création de la table {table_name}: {e}")
 
     def rename_table(self, old_name, new_name):
         """Renomme une table"""
@@ -88,4 +91,5 @@ class SchemaManager:
 
     def close_connection(self):
         """Ferme la connexion à la base de données"""
+        self.cursor.close()                                                                                                                                                                                                              
         self.connection.close()
