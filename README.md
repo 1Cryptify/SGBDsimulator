@@ -5,7 +5,7 @@ Un simulateur de base de données SQLite avec interface graphique PyQt5.
 ## Pour Commencer
 
 ### Cloner le dépôt
-
+```plaintext
 Pour créer une clé SSH et cloner le dépôt :
 
 1. Générer une nouvelle clé SSH :
@@ -42,7 +42,7 @@ cat ~/.ssh/id_ed25519.pub
    - Cliquer sur "New SSH key"
    - Coller la clé publique
    - Sauvegarder
-
+```
 5. Cloner le dépôt :
 
 git clone git@github.com:1Cryptify/SGBDsimulator.git
