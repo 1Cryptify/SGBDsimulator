@@ -3,7 +3,7 @@ import sqlite3
 from contextlib import contextmanager
 
 class DatabaseConnector:
-    def __init__(self, db_path):
+    def __init__(self, db_path="sgbd_simulator.db"):
         self.db_path = db_path
         self.connection = None  
 
