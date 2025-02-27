@@ -1,12 +1,10 @@
-import sqlite3
 from .database_connector import DatabaseConnector
 
 class SchemaManager:
     def __init__(self, db_path):
         """Initialisation avec connexion à la base de données"""
         self.connector = DatabaseConnector(db_path)
-        self.connection = self.connector.get_connection()
-        self.cursor = self.connection.cursor()
+        self.connection = self.connector.get_connection() 
 
     def create_table(self, table_name, columns, constraints=None):
         """
@@ -19,7 +17,8 @@ class SchemaManager:
             if constraints:
                 columns_def += ", " + ", ".join(constraints)
             query = f"CREATE TABLE IF NOT EXISTS {table_name} ({columns_def})"
-            self.cursor.execute(query)
+            with self.connector.transaction() as cursor:
+                cursor.execute(query)
             self.connection.commit()
         except sqlite3.Error as e:
             print(f"Erreur lors de la création de la table {table_name}: {e}")
@@ -27,7 +26,8 @@ class SchemaManager:
     def rename_table(self, old_name, new_name):
         """Renomme une table"""
         query = f"ALTER TABLE {old_name} RENAME TO {new_name}"
-        self.cursor.execute(query)
+        with self.connector.transaction() as cursor:
+            cursor.execute(query)
         self.connection.commit()
 
     def add_column(self, table_name, column_name, column_type):
@@ -41,7 +41,8 @@ class SchemaManager:
         Renomme une colonne (SQLite ne supporte pas directement ALTER COLUMN, donc on recrée la table)
         """
         new_columns = []
-        self.cursor.execute(f"PRAGMA table_info({table_name})")
+        with self.connector.transaction() as cursor:
+            cursor.execute(f"PRAGMA table_info({table_name})")
         columns_info = self.cursor.fetchall()
         
         for col in columns_info:
@@ -63,7 +64,8 @@ class SchemaManager:
     def list_tables(self):
         """Retourne la liste des tables de la base de données"""
         query = "SELECT name FROM sqlite_master WHERE type='table'"
-        self.cursor.execute(query)
+        with self.connector.transaction() as cursor:
+            cursor.execute(query)
         return [table[0] for table in self.cursor.fetchall()]
 
     def validate_schema(self, table_name):
@@ -80,16 +82,17 @@ class SchemaManager:
 
     def enable_foreign_keys(self):
         """Active les clés étrangères si elles ne le sont pas"""
-        self.cursor.execute("PRAGMA foreign_keys = ON;")
+        with self.connector.transaction() as cursor:
+            cursor.execute("PRAGMA foreign_keys = ON;")
         self.connection.commit()
 
     def drop_table(self, table_name):
         """Supprime une table de la base de données"""
         query = f"DROP TABLE IF EXISTS {table_name}"
-        self.cursor.execute(query)
+        with self.connector.transaction() as cursor:
+            cursor.execute(query)
         self.connection.commit()
 
     def close_connection(self):
         """Ferme la connexion à la base de données"""
-        self.cursor.close()                                                                                                                                                                                                              
-        self.connection.close()
+        self.connector.close_connection()
