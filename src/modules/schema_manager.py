@@ -1,4 +1,4 @@
-import sqlite3
+from .database_connector import DatabaseConnector
 from .database_connector import DatabaseConnector
 
 class SchemaManager:
