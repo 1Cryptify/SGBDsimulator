@@ -1,4 +1,4 @@
-from PyQt5 import QtWidgets, QtCore
+from PyQt5 import QtWidgets, QtCore, QtGui
 
 class LoadingSpinner(QtWidgets.QWidget):
     def __init__(self, parent=None):
@@ -17,7 +17,7 @@ class LoadingSpinner(QtWidgets.QWidget):
             }
         """)
 
-        self.animation = QtCore.QMovie("../../img/spinner.gif")
+        self.animation = QtGui.QMovie("../../img/spinner.gif")
         self.spinner.setMovie(self.animation)
 
     def show_spinner(self, message="Loading..."):

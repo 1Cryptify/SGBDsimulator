@@ -1,6 +1,8 @@
 from PyQt5 import QtWidgets, QtCore
 
 class PaginationControl(QtWidgets.QWidget):
+    page_changed = QtCore.pyqtSignal(int)
+
     def __init__(self, parent=None):
         super(PaginationControl, self).__init__(parent)
         self.layout = QtWidgets.QHBoxLayout(self)
@@ -33,11 +35,13 @@ class PaginationControl(QtWidgets.QWidget):
         self.next_button.clicked.connect(self.next_page)
 
         self.current_page = 1
+        self.items_per_page = 10  # Default value for items per page
 
     def set_page(self, page):
         """Set the current page and update the label."""
         self.current_page = page
         self.page_label.setText(f"Page {self.current_page}")
+        self.page_changed.emit(self.current_page)
 
     def previous_page(self):
         """Navigate to the previous page."""

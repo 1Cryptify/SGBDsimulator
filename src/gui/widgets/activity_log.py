@@ -1,5 +1,5 @@
 from PyQt5 import QtWidgets, QtCore
-from src.utils.logging_util import LoggingUtil
+from utils.logging_util import LoggingUtil
 
 class ActivityLog(QtWidgets.QWidget):
     def __init__(self, parent=None):
@@ -42,3 +42,16 @@ class ActivityLog(QtWidgets.QWidget):
     def clear_logs(self):
         """Clear all log entries."""
         self.log_list.clear()
+
+    def save_logs(self):
+        """Save all log entries to a file."""
+        filename, _ = QtWidgets.QFileDialog.getSaveFileName(
+            self,
+            "Save Logs",
+            "",
+            "Text Files (*.txt);;All Files (*)"
+        )
+        if filename:
+            with open(filename, 'w') as f:
+                for i in range(self.log_list.count()):
+                    f.write(self.log_list.item(i).text() + '\n')

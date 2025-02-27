@@ -58,3 +58,13 @@ class InputFormWidget(QtWidgets.QWidget):
         """Set a custom submit handler."""
         self.submit_button.clicked.disconnect()
         self.submit_button.clicked.connect(handler)
+
+    def get_input(self):
+        """Get the input from the first field in the form."""
+        if self.fields:
+            first_field = next(iter(self.fields.values()))
+            if isinstance(first_field, QtWidgets.QLineEdit):
+                return first_field.text()
+            elif isinstance(first_field, QtWidgets.QDateEdit):
+                return first_field.date().toString(QtCore.Qt.ISODate)
+        return ""

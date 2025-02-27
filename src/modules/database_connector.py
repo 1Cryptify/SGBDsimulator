@@ -3,13 +3,18 @@ import sqlite3
 from contextlib import contextmanager
 
 class DatabaseConnector:
-    def __init__(self, db_path="default.db"):
-        self.db_path = db_path
-        self.connection = None  
+    _instance = None
+    
+    def __new__(cls, db_path="sgbd_simulator.db"):
+        if cls._instance is None:
+            cls._instance = super(DatabaseConnector, cls).__new__(cls)
+            cls._instance.db_path = str(db_path)
+            cls._instance.connection = None
+        return cls._instance
 
     def connect(self) -> None:
         try:
-            self.connection = sqlite3.connect(self.db_path)  # Utiliser le bon chemin de la BD
+            self.connection = sqlite3.connect(str(self.db_path))  # Utiliser le bon chemin de la BD
             logging.info("Connexion réussie à la base de données.")
         except Exception as e:
             logging.error(f"Erreur de connexion : {e}")

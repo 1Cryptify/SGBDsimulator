@@ -7,8 +7,10 @@ class SettingsManager:
         self.default_settings = {
             "feature_x_enabled": False,
             "setting_y": 50,
-            "user_name": "root",
-            "user_email": "root@example.com",
+            "user_profile": {
+                "name": "root",
+                "email": "root@example.com"
+            }
         }
         self.load_settings()
 

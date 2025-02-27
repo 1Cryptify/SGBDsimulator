@@ -1,5 +1,5 @@
 from PyQt5 import QtWidgets, QtCore
-from src.utils.settings_manager import SettingsManager
+from utils.settings_manager import SettingsManager
 
 class UserProfile(QtWidgets.QWidget):
     def __init__(self, settings_manager, parent=None):
@@ -54,5 +54,7 @@ class UserProfile(QtWidgets.QWidget):
         """Save the user profile information."""
         name = self.name_input.text()
         email = self.email_input.text()
-        self.settings_manager.update_user_profile(name, email)
+        self.settings_manager.settings["user_profile"]["name"] = name
+        self.settings_manager.settings["user_profile"]["email"] = email
+        self.settings_manager.save_settings()
         print(f"Profile saved: Name - {name}, Email - {email}")

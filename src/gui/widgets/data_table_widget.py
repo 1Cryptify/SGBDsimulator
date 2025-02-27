@@ -34,3 +34,12 @@ class DataTableWidget(QtWidgets.QWidget):
         if selected_items:
             return [item.text() for item in selected_items]
         return None
+    def set_data(self, data):
+            """Set all data in the table at once.
+            
+            Args:
+                data: List of lists/tuples containing row data
+            """
+            self.clear()
+            for row_data in data:
+                self.add_row(row_data)

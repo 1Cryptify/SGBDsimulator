@@ -34,8 +34,17 @@ class QueryExecutor:
             logging.info(f"Insertion réussie. ID inséré : {inserted_id}")
             return inserted_id
 
+    def get_column_names(self) -> List[Tuple[str, str]]:
+        """Retourne les noms et types des colonnes de la dernière requête exécutée"""
+        with self.connector.transaction() as cursor:
+            return cursor.description
+
+    def get_table_columns(self, table_name: str) -> List[str]:
+        """Retourne la liste des noms de colonnes d'une table"""
+        query = f"PRAGMA table_info({table_name})"
+        results = self.execute_query(query)
+        return [row[1] for row in results]  # Column name is at index 1
+
     def close(self): 
         """Ferme la connexion à la base de données"""
         self.connector.close_connection() 
-
-    # The optimize_query method is not needed anymore as it is not part of DatabaseConnector

@@ -1,6 +1,8 @@
 from PyQt5 import QtWidgets, QtCore
 
 class FileUploader(QtWidgets.QWidget):
+    file_uploaded = QtCore.pyqtSignal(list)  # Signal to emit when files are selected
+
     def __init__(self, parent=None):
         super(FileUploader, self).__init__(parent)
         self.layout = QtWidgets.QVBoxLayout(self)
@@ -37,6 +39,7 @@ class FileUploader(QtWidgets.QWidget):
         files, _ = QtWidgets.QFileDialog.getOpenFileNames(self, "Select Files", "", "All Files (*);;Text Files (*.txt)", options=options)
         if files:
             self.label.setText("\n".join(files))  # Display selected file names
+            self.file_uploaded.emit(files)  # Emit signal with selected files
 
     def clear_files(self):
         """Clear the displayed file names."""
