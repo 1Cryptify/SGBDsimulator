@@ -26,31 +26,87 @@ class SchemaManager:
                 cursor.execute(query)
                 # Ajout des métadonnées dans sys_tables
                 cursor.execute("""
-                    INSERT INTO sys_tables (table_name, description)
-                    VALUES (?, ?)
-                """, (table_name, f"Table created with {len(columns)} columns"))
+                    INSERT INTO sys_tables (table_name, table_type, description)
+                    VALUES (?, ?, ?)
+                """, (table_name, 'USER', f"Table created with {len(columns)} columns"))
                 
                 table_id = cursor.lastrowid
                 
-                # Ajout des métadonnées des colonnes
-                for col_name, col_type in columns.items():
-                    cursor.execute("""
-                        INSERT INTO sys_columns (table_id, column_name, data_type, is_nullable)
-                        VALUES (?, ?, ?, 1)
-                    """, (table_id, col_name, col_type))
+                # Récupération des informations complètes sur les colonnes
+                cursor.execute(f"PRAGMA table_info({table_name})")
+                table_info = cursor.fetchall()
                 
-                # Ajout des contraintes dans sys_constraints
+                # Ajout de toutes les colonnes dans sys_columns
+                for col_info in table_info:
+                    cursor.execute("""
+                        INSERT INTO sys_columns (
+                            table_id, column_name, data_type, 
+                            is_nullable, ordinal_position, is_system,
+                            default_value, max_length, is_identity,
+                            is_computed, is_hidden
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        table_id, col_info[1], col_info[2],
+                        1 if col_info[3] == 0 else 0, col_info[0] + 1,
+                        0, col_info[4], None, 0, 0, 0
+                    ))
+                
+                # Gestion des index et contraintes
                 if constraints:
                     for constraint in constraints:
+                        constraint_upper = constraint.upper()
+                        if "PRIMARY KEY" in constraint_upper:
+                            constraint_type = "PRIMARY KEY"
+                            # Création d'un index automatique pour la clé primaire
+                            index_name = f"pk_{table_name}"
+                            cursor.execute("""
+                                INSERT INTO sys_indexes (
+                                    table_id, index_name, is_unique, 
+                                    is_primary, index_type, columns
+                                )
+                                VALUES (?, ?, ?, ?, ?, ?)
+                            """, (table_id, index_name, 1, 1, "BTREE", constraint))
+                        elif "FOREIGN KEY" in constraint_upper:
+                            constraint_type = "FOREIGN KEY"
+                            # Extraction des informations de la clé étrangère
+                            fk_info = constraint.split("REFERENCES")
+                            referenced_table = fk_info[1].strip().split("(")[0].strip()
+                            cursor.execute("""
+                                INSERT INTO sys_indexes (
+                                    table_id, index_name, is_unique, 
+                                    is_primary, index_type, columns
+                                )
+                                VALUES (?, ?, ?, ?, ?, ?)
+                            """, (table_id, f"fk_{table_name}", 0, 0, "BTREE", constraint))
+                        elif "UNIQUE" in constraint_upper:
+                            constraint_type = "UNIQUE"
+                            cursor.execute("""
+                                INSERT INTO sys_indexes (
+                                    table_id, index_name, is_unique, 
+                                    is_primary, index_type, columns
+                                )
+                                VALUES (?, ?, ?, ?, ?, ?)
+                            """, (table_id, f"uk_{table_name}", 1, 0, "BTREE", constraint))
+                        else:
+                            constraint_type = "CHECK" if "CHECK" in constraint_upper else "NOT NULL"
+                            
                         cursor.execute("""
-                            INSERT INTO sys_constraints (table_id, constraint_name, constraint_type, constraint_definition)
-                            VALUES (?, ?, ?, ?)
-                        """, (table_id, f"constraint_{table_name}", "TABLE", constraint))
+                            INSERT INTO sys_constraints (
+                                table_id, constraint_name, constraint_type,
+                                constraint_definition, is_enabled, is_system_generated,
+                                referenced_table_id, referenced_columns
+                            )
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (
+                            table_id, f"constraint_{table_name}_{constraint_type.lower()}",
+                            constraint_type, constraint, 1, 0, None, None
+                        ))
                 
                 cursor.execute("""
-                    INSERT INTO sys_logs (operation_type, table_name, details)
-                    VALUES (?, ?, ?)
-                """, ("CREATE_TABLE", table_name, f"Created with {len(columns)} columns"))
+                    INSERT INTO sys_logs (operation_type, table_name, status, details)
+                    VALUES (?, ?, ?, ?)
+                """, ("CREATE_TABLE", table_name, "SUCCESS", f"Created with {len(columns)} columns"))
                 
         except sqlite3.Error as e:
             print(f"Erreur lors de la création de la table {table_name}: {e}")
@@ -63,6 +119,11 @@ class SchemaManager:
             cursor.execute(f"ALTER TABLE {old_name} RENAME TO {new_name}")
             cursor.execute("UPDATE sys_tables SET table_name = ?, updated_at = CURRENT_TIMESTAMP WHERE table_name = ?",
                          (new_name, old_name))
+            # Mise à jour des index et contraintes
+            cursor.execute("UPDATE sys_indexes SET index_name = replace(index_name, ?, ?) WHERE table_id = (SELECT id FROM sys_tables WHERE table_name = ?)",
+                         (old_name, new_name, new_name))
+            cursor.execute("UPDATE sys_constraints SET constraint_name = replace(constraint_name, ?, ?) WHERE table_id = (SELECT id FROM sys_tables WHERE table_name = ?)",
+                         (old_name, new_name, new_name))
             cursor.execute("""
                 INSERT INTO sys_logs (operation_type, table_name, details)
                 VALUES (?, ?, ?)
@@ -74,10 +135,23 @@ class SchemaManager:
             cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}")
             cursor.execute("SELECT id FROM sys_tables WHERE table_name = ?", (table_name,))
             table_id = cursor.fetchone()[0]
+            
+            # Récupération des informations de la nouvelle colonne
+            cursor.execute(f"PRAGMA table_info({table_name})")
+            col_info = [col for col in cursor.fetchall() if col[1] == column_name][0]
+            
             cursor.execute("""
-                INSERT INTO sys_columns (table_id, column_name, data_type, is_nullable)
-                VALUES (?, ?, ?, 1)
-            """, (table_id, column_name, column_type))
+                INSERT INTO sys_columns (
+                    table_id, column_name, data_type, is_nullable,
+                    ordinal_position, is_system, default_value,
+                    max_length, is_identity, is_computed, is_hidden
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                table_id, column_name, column_type, 1,
+                col_info[0] + 1, 0, None, None, 0, 0, 0
+            ))
+            
             cursor.execute("""
                 INSERT INTO sys_logs (operation_type, table_name, details)
                 VALUES (?, ?, ?)
@@ -107,11 +181,28 @@ class SchemaManager:
             
             cursor.execute("SELECT id FROM sys_tables WHERE table_name = ?", (table_name,))
             table_id = cursor.fetchone()[0]
+            
+            # Mise à jour de sys_columns
             cursor.execute("""
                 UPDATE sys_columns 
                 SET column_name = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE table_id = ? AND column_name = ?
             """, (new_column, table_id, old_column))
+            
+            # Mise à jour des index et contraintes qui référencent cette colonne
+            cursor.execute("""
+                UPDATE sys_indexes 
+                SET columns = replace(columns, ?, ?),
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE table_id = ? AND columns LIKE ?
+            """, (old_column, new_column, table_id, f"%{old_column}%"))
+            
+            cursor.execute("""
+                UPDATE sys_constraints 
+                SET constraint_definition = replace(constraint_definition, ?, ?),
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE table_id = ? AND constraint_definition LIKE ?
+            """, (old_column, new_column, table_id, f"%{old_column}%"))
             
             cursor.execute("""
                 INSERT INTO sys_logs (operation_type, table_name, details)
@@ -128,10 +219,13 @@ class SchemaManager:
         """Vérifie la structure d'une table"""
         with self.connector.transaction() as cursor:
             cursor.execute("""
-                SELECT c.column_name, c.data_type, c.is_nullable
+                SELECT c.column_name, c.data_type, c.is_nullable,
+                       c.is_system, c.default_value, c.max_length,
+                       c.is_identity, c.is_computed, c.is_hidden
                 FROM sys_tables t
                 JOIN sys_columns c ON t.id = c.table_id
                 WHERE t.table_name = ?
+                ORDER BY c.ordinal_position
             """, (table_name,))
             return cursor.fetchall()
 
@@ -149,12 +243,23 @@ class SchemaManager:
     def drop_table(self, table_name):
         """Supprime une table de la base de données"""
         with self.connector.transaction() as cursor:
+            # Récupération de l'ID de la table
+            cursor.execute("SELECT id FROM sys_tables WHERE table_name = ?", (table_name,))
+            table_id = cursor.fetchone()[0]
+            
+            # Suppression des métadonnées associées
+            cursor.execute("DELETE FROM sys_columns WHERE table_id = ?", (table_id,))
+            cursor.execute("DELETE FROM sys_indexes WHERE table_id = ?", (table_id,))
+            cursor.execute("DELETE FROM sys_constraints WHERE table_id = ?", (table_id,))
+            
+            # Suppression de la table
             cursor.execute(f"DROP TABLE IF EXISTS {table_name}")
             cursor.execute("DELETE FROM sys_tables WHERE table_name = ?", (table_name,))
+            
             cursor.execute("""
                 INSERT INTO sys_logs (operation_type, table_name, details)
                 VALUES (?, ?, ?)
-            """, ("DROP_TABLE", table_name, "Table dropped"))
+            """, ("DROP_TABLE", table_name, "Table and all related metadata dropped"))
 
     def close_connection(self):
         """Ferme la connexion à la base de données"""

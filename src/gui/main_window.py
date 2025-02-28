@@ -1,4 +1,5 @@
 import logging
+from PyQt5 import QtCore
 from PyQt5.QtWidgets import QMainWindow, QPushButton, QVBoxLayout, QWidget, QTabWidget,QHBoxLayout,QComboBox,QListWidget,QLabel
 from gui.widgets.input_form_widget import InputFormWidget
 from gui.widgets.export_button_widget import ExportButtonWidget
@@ -37,7 +38,7 @@ class MainWindow(QMainWindow):
         # Initialize core components with database path
         db_path = "sgbd_simulator.db"
         self.settings_manager = SettingsManager()
-        self.logging_util = LoggingUtil()
+        self.logging_spinner = LoggingUtil()
         self.crud_operator = CRUDOperator(db_path)
         self.query_executor = QueryExecutor(db_path)
         self.schema_manager = SchemaManager(db_path)
@@ -48,17 +49,22 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout(central_widget)
         
+        logging.info("Initializing main window components")
+        
         # Status components
         self.notification_banner = NotificationBanner()
         self.status_message = StatusMessageWidget()
         self.loading_spinner = LoadingSpinner()
         layout.addWidget(self.notification_banner)
+        layout.addWidget(self.loading_spinner)
         
         # Main tabbed interface
         self.tabs = TabbedInterface()
+        self.tabs.currentChanged.connect(self.handle_tab_change)
         layout.addWidget(self.tabs)
         
         # Database Management Tab (Primary)
+        logging.debug("Setting up Database Management tab")
         db_management = QWidget()
         db_layout = QVBoxLayout(db_management)
         
@@ -74,6 +80,7 @@ class MainWindow(QMainWindow):
         table_list_layout.addWidget(self.table_list)
         
         # CRUD Operations Panel
+        logging.debug("Setting up CRUD operations panel")
         crud_panel = QWidget()
         crud_layout = QHBoxLayout(crud_panel)
     
@@ -81,28 +88,27 @@ class MainWindow(QMainWindow):
         self.insert_form = InputFormWidget()
         self.insert_form.add_field("Table", "text", "Enter table name")
         self.insert_form.add_field("Data", "text", "key1:value1,key2:value2")
-        self.insert_form.set_submit_handler(lambda data: self.crud_operator.create(data['Table'], dict(item.split(':') for item in data['Data'].split(','))))
+        self.insert_form.set_submit_handler(self.handle_insert)
     
         # Update Form
         self.update_form = InputFormWidget()
         self.update_form.add_field("Table", "text", "Enter table name")
         self.update_form.add_field("Data", "text", "key1:value1,key2:value2")
         self.update_form.add_field("Condition", "text", "WHERE clause")
-        self.update_form.set_submit_handler(lambda data: self.crud_operator.update(data['Table'], 
-            dict(item.split(':') for item in data['Data'].split(',')), 
-            data['Condition'], ()))
+        self.update_form.set_submit_handler(self.handle_update)
     
         # Delete Form
         self.delete_form = InputFormWidget()
         self.delete_form.add_field("Table", "text", "Enter table name")
         self.delete_form.add_field("Condition", "text", "WHERE clause")
-        self.delete_form.set_submit_handler(lambda data: self.crud_operator.delete(data['Table'], data['Condition'], ()))
+        self.delete_form.set_submit_handler(self.handle_delete)
     
         crud_layout.addWidget(self.insert_form)
         crud_layout.addWidget(self.update_form)
         crud_layout.addWidget(self.delete_form)
     
         # Schema Operations Panel
+        logging.debug("Setting up schema operations panel")
         schema_panel = QWidget()
         schema_layout = QHBoxLayout(schema_panel)
     
@@ -111,10 +117,7 @@ class MainWindow(QMainWindow):
         self.create_table_form.add_field("Table Name", "text", "Enter new table name")
         self.create_table_form.add_field("Columns", "text", "name:type,name2:type2")
         self.create_table_form.add_field("Constraints", "text", "PRIMARY KEY(id),...")
-        self.create_table_form.set_submit_handler(lambda data: self.schema_manager.create_table(
-            data['Table Name'],
-            dict(col.split(':') for col in data['Columns'].split(',')),
-            data['Constraints'].split(',') if data['Constraints'] else None))
+        self.create_table_form.set_submit_handler(self.handle_create_table)
     
         # Column Operations Form
         self.column_ops_form = InputFormWidget()
@@ -127,6 +130,7 @@ class MainWindow(QMainWindow):
         schema_layout.addWidget(self.column_ops_form)
     
         # Data Display
+        logging.debug("Setting up data display components")
         self.data_table = DataTableWidget()
         self.search_bar = SearchBar()
         self.search_bar.search_input.textChanged.connect(self.handle_search)
@@ -143,6 +147,7 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(db_management, "Database Management")
         
         # System Tables Tab
+        logging.debug("Setting up System Tables tab")
         sys_tables = QWidget()
         sys_layout = QVBoxLayout(sys_tables)
         
@@ -172,7 +177,10 @@ class MainWindow(QMainWindow):
         self.sys_table_form.set_submit_handler(self.handle_system_table_operation)
         sys_layout.addWidget(self.sys_table_form)
         
-        self.tabs.addTab(sys_tables, "System Tables")        # Query Editor Tab with Logs
+        self.tabs.addTab(sys_tables, "System Tables")
+        
+        # Query Editor Tab with Logs
+        logging.debug("Setting up Query Editor tab")
         query_widget = QWidget()
         query_layout = QVBoxLayout(query_widget)
         self.query_input = InputFormWidget()
@@ -185,6 +193,7 @@ class MainWindow(QMainWindow):
         query_layout.addWidget(self.query_logs)
         self.tabs.addTab(query_widget, "Query Editor")
         
+        logging.info("Main window initialization completed")        
         # Schema Manager Tab with Metadata
         schema_widget = QWidget()
         schema_layout = QVBoxLayout(schema_widget)
@@ -235,6 +244,52 @@ class MainWindow(QMainWindow):
         # Initialize confirmation dialog
         self.confirmation_dialog = ConfirmationDialog()
 
+    def handle_tab_change(self, index):
+        self.loading_spinner.show_spinner("Loading tab content...")
+        QtCore.QTimer.singleShot(1000, self.loading_spinner.hide_spinner)
+
+    def handle_insert(self, data):
+        self.loading_spinner.show_spinner("Inserting data...")
+        QtCore.QTimer.singleShot(1000, lambda: self.perform_insert(data))
+
+    def perform_insert(self, data):
+        result = self.crud_operator.create(data['Table'], dict(item.split(':') for item in data['Data'].split(',')))
+        self.data_table.set_data([result]) if result else None
+        self.loading_spinner.hide_spinner()
+
+    def handle_update(self, data):
+        self.loading_spinner.show_spinner("Updating data...")
+        QtCore.QTimer.singleShot(1000, lambda: self.perform_update(data))
+
+    def perform_update(self, data):
+        result = self.crud_operator.update(data['Table'], 
+            dict(item.split(':') for item in data['Data'].split(',')), 
+            data['Condition'], ())
+        self.data_table.set_data([result]) if result else None
+        self.loading_spinner.hide_spinner()
+
+    def handle_delete(self, data):
+        self.loading_spinner.show_spinner("Deleting data...")
+        QtCore.QTimer.singleShot(1000, lambda: self.perform_delete(data))
+
+    def perform_delete(self, data):
+        self.crud_operator.delete(data['Table'], data['Condition'], ())
+        self.data_table.clear()
+        self.loading_spinner.hide_spinner()
+
+    def handle_create_table(self, data):
+        self.loading_spinner.show_spinner("Creating table...")
+        QtCore.QTimer.singleShot(1000, lambda: self.perform_create_table(data))
+
+    def perform_create_table(self, data):
+        result = self.schema_manager.create_table(
+            data['Table Name'],
+            dict(col.split(':') for col in data['Columns'].split(',')),
+            data['Constraints'].split(',') if data['Constraints'] else None)
+        self.data_table.set_data([result]) if result else None
+        self.loading_spinner.hide_spinner()
+        self.refresh_table_list()
+
     def handle_search(self):
         search_text = self.search_bar.get_search_text()
         table_conditions = "WHERE table_name LIKE ? OR description LIKE ?"
@@ -242,15 +297,9 @@ class MainWindow(QMainWindow):
         results = self.crud_operator.read("sys_tables", table_conditions, params)
         
         if results:
-            # Get column names from first row
-            headers = list(results[0].keys())
-            self.data_table.set_headers(headers)
+            self.data_table.set_data(results)
+        else:
             self.data_table.clear()
-            
-            # Add each row to table
-            for row in results:
-                row_data = list(row.values())
-                self.data_table.add_row(row_data)
 
     def load_table_data(self, page):
         limit = self.pagination.items_per_page
@@ -266,14 +315,9 @@ class MainWindow(QMainWindow):
         results = self.query_executor.execute_query(query, (limit, offset))
         
         if results:
-            # Get column names from query result
-            headers = [desc[0] for desc in self.query_executor.get_column_names()]
-            self.data_table.set_headers(headers)
+            self.data_table.set_data([dict(zip([desc[0] for desc in self.query_executor.get_column_names()], row)) for row in results])
+        else:
             self.data_table.clear()
-            
-            # Add each row to table
-            for row in results:
-                self.data_table.add_row(row)
 
     def execute_query(self):
         form_data = self.query_input.fields["SQL Query"].text()
@@ -281,22 +325,20 @@ class MainWindow(QMainWindow):
             results = self.query_executor.execute_query(form_data)
             
             if results:
-                # Set up query results table
                 headers = [desc[0] for desc in self.query_executor.get_column_names()]
-                self.query_results.set_headers(headers)
+                data = [dict(zip(headers, row)) for row in results]
+                self.query_results.set_data(data)
+            else:
                 self.query_results.clear()
-                for row in results:
-                    self.query_results.add_row(row)
             
-            # Get and display logs
             log_query = "SELECT operation_timestamp, operation_type, status, message FROM sys_logs ORDER BY operation_timestamp DESC LIMIT 10"
             log_results = self.query_executor.execute_query(log_query)
             
             if log_results:
-                self.query_logs.set_headers(["Timestamp", "Operation", "Status", "Message"])
+                log_data = [dict(zip(["Timestamp", "Operation", "Status", "Message"], row)) for row in log_results]
+                self.query_logs.set_data(log_data)
+            else:
                 self.query_logs.clear()
-                for log in log_results:
-                    self.query_logs.add_row(log)
             
             self.status_message.show_success("Query executed successfully")
         except Exception as e:
@@ -306,13 +348,13 @@ class MainWindow(QMainWindow):
         form_data = {
             "operation": self.schema_form.fields["Operation"].text(),
             "table_name": self.schema_form.fields["Table Name"].text(),
-            "columns": eval(self.schema_form.fields["Columns"].text()),  # Convert string to dictionary
+            "columns": eval(self.schema_form.fields["Columns"].text()),
             "constraints": self.schema_form.fields["Constraints"].text()
         }
         
         try:
             if form_data["operation"] == "create_table":
-                self.schema_manager.create_table(
+                result = self.schema_manager.create_table(
                     form_data["table_name"],
                     form_data["columns"],
                     form_data["constraints"]
@@ -329,13 +371,11 @@ class MainWindow(QMainWindow):
                 metadata = self.query_executor.execute_query(metadata_query, (form_data["table_name"],))
                 
                 if metadata:
-                    self.metadata_table.set_headers([
-                        "Table Name", "Column Name", "Data Type", 
-                        "Nullable", "Constraint Type", "Constraint Definition"
-                    ])
+                    headers = ["Table Name", "Column Name", "Data Type", "Nullable", "Constraint Type", "Constraint Definition"]
+                    data = [dict(zip(headers, row)) for row in metadata]
+                    self.metadata_table.set_data(data)
+                else:
                     self.metadata_table.clear()
-                    for row in metadata:
-                        self.metadata_table.add_row(row)
                 
             elif form_data["operation"] == "alter_table":
                 self.schema_manager.rename_table(
@@ -344,6 +384,7 @@ class MainWindow(QMainWindow):
                 )
             self.status_message.show_success("Schema operation completed")
             self.schema_form.clear_fields()
+            self.refresh_table_list()
         except Exception as e:
             self.status_message.show_error(f"Schema operation error: {str(e)}")
 
@@ -351,6 +392,7 @@ class MainWindow(QMainWindow):
         try:
             # Add implementation for file import
             self.status_message.show_success("File imported successfully")
+            self.refresh_table_list()
         except Exception as e:
             self.status_message.show_error(f"Import error: {str(e)}")
 
@@ -359,74 +401,72 @@ class MainWindow(QMainWindow):
         self.query_executor.close()
         self.data_viewer.close()
         event.accept()
+
     def handle_column_operation(self, form_data):
-            try:
-                if form_data["operation"] == "add_column":
-                    metadata_query = """
-                        ALTER TABLE ? ADD COLUMN ? ? 
-                        """ + ("NOT NULL" if not form_data["is_nullable"] else "")
-                    self.query_executor.execute_query(
-                        metadata_query, 
-                        (form_data["table_name"], 
-                        form_data["column_name"], 
-                        form_data["data_type"])
-                    )
-                    
-                    # Update metadata
-                    self._update_table_metadata(form_data["table_name"])
-                    self._log_operation(
-                        "ALTER", 
-                        form_data["table_name"], 
-                        f"Added column: {form_data['column_name']}"
-                    )
-                    
-                elif form_data["operation"] == "drop_column":
-                    metadata_query = "ALTER TABLE ? DROP COLUMN ?"
-                    self.query_executor.execute_query(
-                        metadata_query,
-                        (form_data["table_name"], form_data["column_name"])
-                    )
-                    
-                    # Update metadata
-                    self._update_table_metadata(form_data["table_name"])
-                    self._log_operation(
-                        "ALTER", 
-                        form_data["table_name"], 
-                        f"Dropped column: {form_data['column_name']}"
-                    )
-                    
-                elif form_data["operation"] == "modify_column":
-                    metadata_query = """
-                        ALTER TABLE ? MODIFY COLUMN ? ? 
-                        """ + ("NOT NULL" if not form_data["is_nullable"] else "")
-                    self.query_executor.execute_query(
-                        metadata_query,
-                        (form_data["table_name"], 
-                        form_data["column_name"], 
-                        form_data["new_data_type"])
-                    )
-                    
-                    # Update metadata
-                    self._update_table_metadata(form_data["table_name"])
-                    self._log_operation(
-                        "ALTER", 
-                        form_data["table_name"], 
-                        f"Modified column: {form_data['column_name']}"
-                    )
-                    
-                self.status_message.show_success("Column operation completed successfully")
-                self.schema_form.clear_fields()
+        try:
+            if form_data["operation"] == "add_column":
+                metadata_query = """
+                    ALTER TABLE ? ADD COLUMN ? ? 
+                    """ + ("NOT NULL" if not form_data["is_nullable"] else "")
+                self.query_executor.execute_query(
+                    metadata_query, 
+                    (form_data["table_name"], 
+                    form_data["column_name"], 
+                    form_data["data_type"])
+                )
                 
-            except Exception as e:
-                self.status_message.show_error(f"Column operation error: {str(e)}")
-                logging.error(f"Column operation failed: {str(e)}")
+                self._update_table_metadata(form_data["table_name"])
+                self._log_operation(
+                    "ALTER", 
+                    form_data["table_name"], 
+                    f"Added column: {form_data['column_name']}"
+                )
+                
+            elif form_data["operation"] == "drop_column":
+                metadata_query = "ALTER TABLE ? DROP COLUMN ?"
+                self.query_executor.execute_query(
+                    metadata_query,
+                    (form_data["table_name"], form_data["column_name"])
+                )
+                
+                self._update_table_metadata(form_data["table_name"])
+                self._log_operation(
+                    "ALTER", 
+                    form_data["table_name"], 
+                    f"Dropped column: {form_data['column_name']}"
+                )
+                
+            elif form_data["operation"] == "modify_column":
+                metadata_query = """
+                    ALTER TABLE ? MODIFY COLUMN ? ? 
+                    """ + ("NOT NULL" if not form_data["is_nullable"] else "")
+                self.query_executor.execute_query(
+                    metadata_query,
+                    (form_data["table_name"], 
+                    form_data["column_name"], 
+                    form_data["new_data_type"])
+                )
+                
+                self._update_table_metadata(form_data["table_name"])
+                self._log_operation(
+                    "ALTER", 
+                    form_data["table_name"], 
+                    f"Modified column: {form_data['column_name']}"
+                )
+                
+            self.status_message.show_success("Column operation completed successfully")
+            self.schema_form.clear_fields()
+            self.refresh_table_list()
+                
+        except Exception as e:
+            self.status_message.show_error(f"Column operation error: {str(e)}")
+            logging.error(f"Column operation failed: {str(e)}")
+
     def refresh_system_tables(self):
-            """Rafraîchit l'affichage de la table système sélectionnée"""
-            current_table = self.sys_table_selector.currentText()
-            self.load_system_table(current_table)
+        current_table = self.sys_table_selector.currentText()
+        self.load_system_table(current_table)
     
     def load_system_table(self, table_name):
-        """Charge les données d'une table système dans la vue"""
         try:
             results = self.crud_operator.read(table_name)
             if results:
@@ -440,25 +480,27 @@ class MainWindow(QMainWindow):
             logging.error(f"Failed to load system table {table_name}: {str(e)}")
 
     def handle_system_table_operation(self, form_data):
-        """Gère les opérations CRUD sur les tables système"""
         try:
             table_name = self.sys_table_selector.currentText()
             operation = form_data["Operation"].upper()
             
             if operation == "INSERT":
-                # Parse data string into dictionary
                 data_dict = dict(item.split(":") for item in form_data["Data"].split(","))
-                self.crud_operator.create(table_name, data_dict)
+                result = self.crud_operator.create(table_name, data_dict)
+                if result:
+                    self.sys_tables_view.set_data([result])
                 
             elif operation == "UPDATE":
-                # Parse data and conditions
                 data_dict = dict(item.split(":") for item in form_data["Data"].split(","))
                 conditions = form_data["Condition"]
-                self.crud_operator.update(table_name, data_dict, conditions, ())
+                result = self.crud_operator.update(table_name, data_dict, conditions, ())
+                if result:
+                    self.sys_tables_view.set_data([result])
                 
             elif operation == "DELETE":
                 conditions = form_data["Condition"]
                 self.crud_operator.delete(table_name, conditions, ())
+                self.sys_tables_view.clear()
                 
             else:
                 raise ValueError(f"Invalid operation: {operation}")
@@ -470,63 +512,48 @@ class MainWindow(QMainWindow):
         except Exception as e:
             self.status_message.show_error(f"System table operation error: {str(e)}")
             logging.error(f"System table operation failed: {str(e)}")
+
     def handle_table_selection(self, item):
-            """Handles the selection of a table from the table list"""
-            try:
-                table_name = item.text()
-                # Get table data
-                results = self.crud_operator.read(table_name)
+        try:
+            table_name = item.text()
+            results = self.crud_operator.read(table_name)
+            
+            if results:
+                self.data_table.set_data(results)
                 
-                if results:
-                    # Get column names from first row
-                    headers = list(results[0].keys())
-                    self.data_table.set_headers(headers)
-                    self.data_table.clear()
+                self.insert_form.fields["Table"].setText(table_name)
+                self.update_form.fields["Table"].setText(table_name)
+                self.delete_form.fields["Table"].setText(table_name)
+                
+                self.status_message.show_success(f"Loaded table {table_name} successfully")
+            else:
+                self.data_table.clear()
+                self.status_message.show_info(f"No data in table {table_name}")
                     
-                    # Add each row to table
-                    for row in results:
-                        self.data_table.add_row(list(row.values()))
-                    
-                    # Update forms with selected table
-                    self.insert_form.fields["Table"].setText(table_name)
-                    self.update_form.fields["Table"].setText(table_name)
-                    self.delete_form.fields["Table"].setText(table_name)
-                    
-                    # Show success message
-                    self.status_message.show_success(f"Loaded table {table_name} successfully")
-                else:
-                    self.data_table.clear()
-                    self.status_message.show_info(f"No data in table {table_name}")
-                    
-            except Exception as e:
-                self.status_message.show_error(f"Error loading table: {str(e)}")
-                logging.error(f"Failed to load table {table_name}: {str(e)}")
+        except Exception as e:
+            self.status_message.show_error(f"Error loading table: {str(e)}")
+            logging.error(f"Failed to load table {table_name}: {str(e)}")
     
     def refresh_table_list(self):
-            """Refreshes the list of available tables"""
-            try:
-                # Query to get all user tables
-                results = self.query_executor.execute_query(
-                    "SELECT table_name FROM sys_tables WHERE table_type = 'USER'"
-                )
-                
-                # Clear existing items
-                self.table_list.clear()
-                
-                # Add tables to list widget
-                if results:
-                    for row in results:
-                        self.table_list.addItem(row[0])
-                    self.status_message.show_success("Table list refreshed successfully")
-                else:
-                    self.status_message.show_info("No tables found")
+        try:
+            results = self.query_executor.execute_query(
+                "SELECT table_name FROM sys_tables WHERE table_type = 'USER'"
+            )
+            
+            self.table_list.clear()
+            
+            if results:
+                for row in results:
+                    self.table_list.addItem(row[0])
+                self.status_message.show_success("Table list refreshed successfully")
+            else:
+                self.status_message.show_info("No tables found")
                     
-            except Exception as e:
-                self.status_message.show_error(f"Error refreshing table list: {str(e)}")
-                logging.error(f"Failed to refresh table list: {str(e)}")
+        except Exception as e:
+            self.status_message.show_error(f"Error refreshing table list: {str(e)}")
+            logging.error(f"Failed to refresh table list: {str(e)}")
 
     def _update_table_metadata(self, table_name):
-        """Updates the metadata display for a given table"""
         try:
             metadata_query = """
                 SELECT column_name, data_type, is_nullable, 
@@ -538,19 +565,16 @@ class MainWindow(QMainWindow):
             metadata = self.query_executor.execute_query(metadata_query, (table_name,))
             
             if metadata:
-                self.metadata_table.set_headers([
-                    "Column Name", "Data Type", "Nullable",
-                    "Default Value", "Max Length"
-                ])
+                headers = ["Column Name", "Data Type", "Nullable", "Default Value", "Max Length"]
+                data = [dict(zip(headers, row)) for row in metadata]
+                self.metadata_table.set_data(data)
+            else:
                 self.metadata_table.clear()
-                for row in metadata:
-                    self.metadata_table.add_row(row)
                     
         except Exception as e:
             logging.error(f"Failed to update metadata for table {table_name}: {str(e)}")
 
     def _log_operation(self, operation_type, table_name, message):
-        """Logs database operations to sys_logs table"""
         try:
             log_query = """
                 INSERT INTO sys_logs 

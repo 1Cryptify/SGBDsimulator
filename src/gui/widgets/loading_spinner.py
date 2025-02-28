@@ -18,11 +18,12 @@ class LoadingSpinner(QtWidgets.QWidget):
         """)
 
         self.animation = QtGui.QMovie("../../img/spinner.gif")
+        self.animation.setScaledSize(QtCore.QSize(64, 64))
         self.spinner.setMovie(self.animation)
 
     def show_spinner(self, message="Loading..."):
         """Show the spinner with a custom message."""
-        self.spinner.setText(message)
+        # self.spinner.setText(message)
         self.animation.start()
         self.show()
 
